@@ -13,6 +13,7 @@ object AiDrafts {
     private const val DEFAULT_MODEL = "gpt-4o-mini"
     private const val MAX_POST_LENGTH = 5_000
     private const val MAX_COMMENT_LENGTH = 500
+    private const val MAX_RESPONSE_CHARS = 1_000_000
 
     fun generateSingle(postText: String, apiKey: String, model: String, style: String): String? {
         if (apiKey.isBlank()) return null
@@ -67,6 +68,7 @@ object AiDrafts {
             readTimeout = READ_TIMEOUT_MS
             requestMethod = "POST"
             doOutput = true
+            instanceFollowRedirects = false
             useCaches = false
             setRequestProperty("Authorization", "Bearer $apiKey")
             setRequestProperty("Content-Type", "application/json; charset=UTF-8")
@@ -78,7 +80,21 @@ object AiDrafts {
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
                 ?: throw IllegalStateException("AI API вернул HTTP $status")
-            val responseText = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val responseText = stream.bufferedReader(Charsets.UTF_8).use { reader ->
+                val output = StringBuilder()
+                val buffer = CharArray(8_192)
+                var total = 0
+                while (true) {
+                    val count = reader.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    if (total > MAX_RESPONSE_CHARS) {
+                        throw IllegalStateException("Ответ AI API превышает допустимый размер")
+                    }
+                    output.append(buffer, 0, count)
+                }
+                output.toString()
+            }
             if (status !in 200..299) {
                 val message = runCatching {
                     JSONObject(responseText).optJSONObject("error")?.optString("message")
