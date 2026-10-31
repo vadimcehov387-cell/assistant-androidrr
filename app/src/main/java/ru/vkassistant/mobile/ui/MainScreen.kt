@@ -1,5 +1,6 @@
 package ru.vkassistant.mobile.ui
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material3.Icon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -45,12 +57,12 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 
-private enum class AssistantTab(val label: String, val symbol: String, val route: String) {
-    HOME("Главная", "⌂", "home"),
-    COMMUNITIES("Группы", "▦", "communities"),
-    AI("ИИ", "✦", "ai"),
-    HISTORY("История", "◷", "history"),
-    SETTINGS("Настройки", "⚙", "settings")
+private enum class AssistantTab(val label: String, val route: String) {
+    HOME("Главная", "home"),
+    COMMUNITIES("Группы", "communities"),
+    AI("ИИ", "ai"),
+    HISTORY("История", "history"),
+    SETTINGS("Настройки", "settings")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,7 +111,7 @@ fun AssistantMainScreen(
                     NavigationBarItem(
                         selected = safeTabIndex == index,
                         onClick = { selectedTabIndex = index },
-                        icon = { Text(tab.symbol, style = MaterialTheme.typography.titleMedium) },
+                        icon = { Icon(imageVector = when (tab) {\n                            AssistantTab.HOME -> Icons.Default.Home\n                            AssistantTab.COMMUNITIES -> Icons.Default.Groups\n                            AssistantTab.AI -> Icons.Default.AutoAwesome\n                            AssistantTab.HISTORY -> Icons.Default.History\n                            AssistantTab.SETTINGS -> Icons.Default.Settings\n                        }, contentDescription = tab.label) },
                         label = { Text(tab.label, maxLines = 1) }
                     )
                 }
@@ -152,7 +164,7 @@ private fun HomeDashboard(
             }
         }
         item {
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp),
+            Card(Modifier.fillMaxWidth().animateContentSize(), shape = RoundedCornerShape(26.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )) {
@@ -329,7 +341,7 @@ private fun AiPage(apiKey: String, model: String, style: String) {
                             val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
                                 as android.content.ClipboardManager
                             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AI draft", result))
-                        }) { Text("Копировать") }
+                        }) { Icon(Icons.Default.ContentCopy, contentDescription = null)\n                            Text("Копировать") }
                         TextButton(onClick = { result = "" }) { Text("Очистить") }
                     }
                 }
@@ -469,7 +481,7 @@ private fun EventCard(text: String) {
 
 @Composable
 private fun MetricCard(title: String, value: String, modifier: Modifier = Modifier) {
-    Card(modifier, shape = RoundedCornerShape(22.dp),
+    Card(modifier.animateContentSize(), shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(value, style = MaterialTheme.typography.headlineLarge,
