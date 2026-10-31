@@ -121,7 +121,7 @@ class MonitorService : Service() {
         }
 
         for (post in freshPosts) {
-            if (!running.get()) break
+            if (!isActive(runId)) break
             processPost(runId, community, post, vkToken, tgToken, chatId)
         }
     }
