@@ -111,7 +111,13 @@ fun AssistantMainScreen(
                     NavigationBarItem(
                         selected = safeTabIndex == index,
                         onClick = { selectedTabIndex = index },
-                        icon = { Icon(imageVector = when (tab) {\n                            AssistantTab.HOME -> Icons.Default.Home\n                            AssistantTab.COMMUNITIES -> Icons.Default.Groups\n                            AssistantTab.AI -> Icons.Default.AutoAwesome\n                            AssistantTab.HISTORY -> Icons.Default.History\n                            AssistantTab.SETTINGS -> Icons.Default.Settings\n                        }, contentDescription = tab.label) },
+                        icon = { Icon(imageVector = when (tab) {
+                            AssistantTab.HOME -> Icons.Default.Home
+                            AssistantTab.COMMUNITIES -> Icons.Default.Groups
+                            AssistantTab.AI -> Icons.Default.AutoAwesome
+                            AssistantTab.HISTORY -> Icons.Default.History
+                            AssistantTab.SETTINGS -> Icons.Default.Settings
+                        }, contentDescription = tab.label) },
                         label = { Text(tab.label, maxLines = 1) }
                     )
                 }
@@ -341,7 +347,8 @@ private fun AiPage(apiKey: String, model: String, style: String) {
                             val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
                                 as android.content.ClipboardManager
                             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AI draft", result))
-                        }) { Icon(Icons.Default.ContentCopy, contentDescription = null)\n                            Text("Копировать") }
+                        }) { Icon(Icons.Default.ContentCopy, contentDescription = null)
+                            Text("Копировать") }
                         TextButton(onClick = { result = "" }) { Text("Очистить") }
                     }
                 }
