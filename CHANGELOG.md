@@ -2,17 +2,22 @@
 
 ## 3.3 — in development
 
-This is a development release. No APK is published from this branch yet.
+No release APK is published yet. This branch contains ongoing integration work.
 
-### Planned changes
-- Modernize the Russian-language Android interface.
-- Replace stale 3.0 branding and descriptions.
-- Improve community controls, AI draft review, event history, and settings.
-- Retain encrypted credential storage and fail-closed behavior.
-- Retain HTTPS-only network traffic and keep credentials out of URLs and logs.
-- Keep automatic publishing off by default and require explicit per-community consent.
-- Preserve conservative rate limits and duplicate protection.
-- Document Android background execution restrictions.
+### Implemented in the current development branch
+- Added Material 3 Compose dashboard and a Compose Activity entry point.
+- Added Android Gradle configuration for Kotlin 2.0.20, Compose and Material 3.
+- Added an Android debug-build GitHub Actions workflow.
+- Hardened VK and Telegram HTTP response handling, timeouts and input validation.
+- Added defensive community preference parsing and duplicate filtering.
+- Added encrypted preferences with migration from the previous plaintext preference file.
+- Hardened the monitoring worker lifecycle against rapid stop/restart races.
+- Advance a post cursor only after Telegram confirms notification delivery.
+- Validate quiet-hour values and keep conservative automatic-publishing limits.
+- Hardened AI response parsing and bounded generated comment length.
 
-### Verification
-Build and device-test status: not yet verified.
+### Still incomplete
+- The Communities, AI, History and Settings tabs are not fully implemented.
+- The current Activity does not yet provide the original 3.0 settings editor and community-management form.
+- Full device testing and a successful debug APK build have not yet been confirmed.
+- Android background-execution behavior still requires testing on a real device.
