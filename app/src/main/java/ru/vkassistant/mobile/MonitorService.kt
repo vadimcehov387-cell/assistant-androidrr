@@ -92,7 +92,7 @@ class MonitorService : Service() {
         }
 
         for (community in communities) {
-            if (!running.get()) break
+            if (!isActive(runId)) break
             try {
                 processCommunity(runId, community, vkToken, tgToken, chatId)
             } catch (error: Exception) {
