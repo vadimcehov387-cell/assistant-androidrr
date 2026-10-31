@@ -13,6 +13,7 @@ object Api {
     private const val VK_VERSION = "5.199"
     private const val CONNECT_TIMEOUT_MS = 15_000
     private const val READ_TIMEOUT_MS = 20_000
+    private const val MAX_RESPONSE_CHARS = 1_000_000
 
     private fun enc(value: String): String =
         URLEncoder.encode(value, Charsets.UTF_8.name())
@@ -25,7 +26,21 @@ object Api {
             connection.errorStream
                 ?: throw IllegalStateException("HTTP $code: сервер не вернул описание ошибки")
         }
-        val body = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+        val body = stream.bufferedReader(Charsets.UTF_8).use { reader ->
+            val output = StringBuilder()
+            val buffer = CharArray(8_192)
+            var total = 0
+            while (true) {
+                val count = reader.read(buffer)
+                if (count < 0) break
+                total += count
+                if (total > MAX_RESPONSE_CHARS) {
+                    throw IllegalStateException("Ответ сервера превышает допустимый размер")
+                }
+                output.append(buffer, 0, count)
+            }
+            output.toString()
+        }
         if (code !in 200..299) {
             val message = runCatching {
                 JSONObject(body).optJSONObject("error")?.optString("error_msg")
@@ -38,16 +53,20 @@ object Api {
 
     private fun vkGet(method: String, params: Map<String, String>, token: String): JSONObject {
         require(token.isNotBlank()) { "Не задан токен VK" }
-        val query = (params + mapOf("access_token" to token, "v" to VK_VERSION))
+        val body = (params + mapOf("access_token" to token, "v" to VK_VERSION))
             .entries.joinToString("&") { "${enc(it.key)}=${enc(it.value)}" }
-        val connection = (URL("https://api.vk.com/method/$method?$query")
+        val connection = (URL("https://api.vk.com/method/$method")
             .openConnection() as HttpURLConnection).apply {
             connectTimeout = CONNECT_TIMEOUT_MS
             readTimeout = READ_TIMEOUT_MS
-            requestMethod = "GET"
+            requestMethod = "POST"
+            doOutput = true
+            instanceFollowRedirects = false
             useCaches = false
+            setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
         }
         return try {
+            connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             val json = JSONObject(readResponse(connection))
             if (json.has("error")) {
                 val error = json.optJSONObject("error")
@@ -143,6 +162,7 @@ object Api {
             readTimeout = READ_TIMEOUT_MS
             requestMethod = "POST"
             doOutput = true
+            instanceFollowRedirects = false
             useCaches = false
             setRequestProperty(
                 "Content-Type",
