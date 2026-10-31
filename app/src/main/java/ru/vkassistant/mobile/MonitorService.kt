@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class MonitorService : Service() {
     private val running = AtomicBoolean(false)
     @Volatile private var worker: Thread? = null
+    @Volatile private var generation: Long = 0L
     private val channelId = "vk_monitor"
     private val notificationId = 10
 
@@ -41,16 +42,17 @@ class MonitorService : Service() {
         startForeground(notificationId, notification("Мониторинг запускается"))
         if (running.compareAndSet(false, true)) {
             Prefs.setRunning(this, true)
-            worker = Thread({ monitorLoop() }, "VkAssistantMonitor").also { it.start() }
+            val runId = ++generation
+            worker = Thread({ monitorLoop(runId) }, "VkAssistantMonitor-$runId").also { it.start() }
         }
         return START_STICKY
     }
 
-    private fun monitorLoop() {
+    private fun monitorLoop(runId: Long) {
         try {
-            while (running.get() && Prefs.isRunning(this)) {
+            while (isActive(runId)) {
                 try {
-                    checkCommunities()
+                    checkCommunities(runId)
                 } catch (error: Exception) {
                     Prefs.addHistory(this, "ERROR | ${safeMessage(error)}")
                     updateNotification("Ошибка мониторинга: ${safeMessage(error).take(90)}")
@@ -59,19 +61,21 @@ class MonitorService : Service() {
                 try {
                     Thread.sleep(POLL_INTERVAL_MS)
                 } catch (_: InterruptedException) {
-                    if (!running.get()) break
+                    if (!isActive(runId)) break
                 }
             }
         } finally {
-            running.set(false)
-            Prefs.setRunning(this, false)
-            worker = null
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            if (runId == generation) {
+                running.set(false)
+                Prefs.setRunning(this, false)
+                worker = null
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
         }
     }
 
-    private fun checkCommunities() {
+    private fun checkCommunities(runId: Long) {
         val vkToken = Prefs.get(this, "vk_key")
         val tgToken = Prefs.get(this, "tg_token")
         val chatId = Prefs.get(this, "tg_chat")
@@ -90,7 +94,7 @@ class MonitorService : Service() {
         for (community in communities) {
             if (!running.get()) break
             try {
-                processCommunity(community, vkToken, tgToken, chatId)
+                processCommunity(runId, community, vkToken, tgToken, chatId)
             } catch (error: Exception) {
                 Prefs.addHistory(
                     this,
@@ -102,6 +106,7 @@ class MonitorService : Service() {
     }
 
     private fun processCommunity(
+        runId: Long,
         community: Community,
         vkToken: String,
         tgToken: String,
@@ -117,17 +122,19 @@ class MonitorService : Service() {
 
         for (post in freshPosts) {
             if (!running.get()) break
-            processPost(community, post, vkToken, tgToken, chatId)
+            processPost(runId, community, post, vkToken, tgToken, chatId)
         }
     }
 
     private fun processPost(
+        runId: Long,
         community: Community,
         post: JSONObject,
         vkToken: String,
         tgToken: String,
         chatId: String
     ) {
+        if (!isActive(runId)) return
         val postId = post.optLong("id")
         val postDate = post.optLong("date")
         if (postId <= 0L || postDate <= 0L) return
@@ -215,6 +222,8 @@ class MonitorService : Service() {
             append(publishStatus)
         }
 
+        // Stop between network operations when the user disables monitoring.
+        if (!isActive(runId)) return
         // Advance the cursor only after Telegram confirms delivery. If delivery
         // fails, this post is retried on the next poll instead of being lost.
         Api.sendTelegram(tgToken, chatId, telegramMessage)
@@ -224,6 +233,7 @@ class MonitorService : Service() {
 
     private fun stopMonitoring() {
         Prefs.setRunning(this, false)
+        generation++
         running.set(false)
         worker?.interrupt()
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -335,7 +345,11 @@ class MonitorService : Service() {
             .notify(notificationId, notification(text))
     }
 
+    private fun isActive(runId: Long): Boolean =
+        running.get() && runId == generation && Prefs.isRunning(this)
+
     override fun onDestroy() {
+        generation++
         running.set(false)
         worker?.interrupt()
         Prefs.setRunning(this, false)
