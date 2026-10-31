@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,26 +24,26 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-private enum class AssistantTab(val label: String, val symbol: String) {
-    HOME("Главная", "⌂"),
-    COMMUNITIES("Группы", "▦"),
-    AI("ИИ", "✦"),
-    HISTORY("История", "◷"),
-    SETTINGS("Настройки", "⚙")
+private enum class AssistantTab(val label: String, val symbol: String, val route: String) {
+    HOME("Главная", "⌂", "home"),
+    COMMUNITIES("Группы", "▦", "communities"),
+    AI("ИИ", "✦", "ai"),
+    HISTORY("История", "◷", "history"),
+    SETTINGS("Настройки", "⚙", "settings")
 }
 
 /**
  * Material 3 UI scaffold for VK Assistant 3.3.
  *
- * This is a presentation layer. The caller must provide real monitoring
- * callbacks and state from the app's service/preferences.
+ * The caller supplies live state and real service callbacks. This composable
+ * deliberately has no fake defaults that could make controls appear functional.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,8 +56,9 @@ fun AssistantMainScreen(
     onStopMonitoring: () -> Unit,
     onOpenTab: (String) -> Unit
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
     val tabs = AssistantTab.values()
+    val safeTabIndex = selectedTabIndex.coerceIn(tabs.indices)
 
     Scaffold(
         topBar = {
@@ -78,12 +79,17 @@ fun AssistantMainScreen(
             NavigationBar {
                 tabs.forEachIndexed { index, tab ->
                     NavigationBarItem(
-                        selected = selectedTab == index,
+                        selected = safeTabIndex == index,
                         onClick = {
-                            selectedTab = index
-                            onOpenTab(tab.name.lowercase())
+                            selectedTabIndex = index
+                            onOpenTab(tab.route)
                         },
-                        icon = { Text(tab.symbol, style = MaterialTheme.typography.titleMedium) },
+                        icon = {
+                            Text(
+                                tab.symbol,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        },
                         label = { Text(tab.label, maxLines = 1) }
                     )
                 }
@@ -91,10 +97,12 @@ fun AssistantMainScreen(
         }
     ) { padding ->
         Surface(
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
             color = MaterialTheme.colorScheme.background
         ) {
-            when (tabs[selectedTab]) {
+            when (tabs[safeTabIndex]) {
                 AssistantTab.HOME -> HomeDashboard(
                     isMonitoring = isMonitoring,
                     connectedServices = connectedServices,
@@ -133,13 +141,26 @@ private fun HomeDashboard(
     onStart: () -> Unit,
     onStop: () -> Unit
 ) {
+    val visibleEvents = recentEvents
+        .asSequence()
+        .map(String::trim)
+        .filter(String::isNotEmpty)
+        .take(8)
+        .toList()
+
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
             Column(modifier = Modifier.padding(top = 18.dp, bottom = 2.dp)) {
-                Text("Панель управления", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    "Панель управления",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
                 Text(
                     "Мониторинг публикаций и подготовка ответов",
                     style = MaterialTheme.typography.bodyMedium,
@@ -150,10 +171,15 @@ private fun HomeDashboard(
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
             ) {
                 Column(Modifier.padding(18.dp)) {
-                    Text("СОСТОЯНИЕ МОНИТОРИНГА", style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        "СОСТОЯНИЕ МОНИТОРИНГА",
+                        style = MaterialTheme.typography.labelMedium
+                    )
                     Spacer(Modifier.height(8.dp))
                     Text(
                         if (isMonitoring) "Мониторинг активен" else "Мониторинг остановлен",
@@ -161,16 +187,26 @@ private fun HomeDashboard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        if (isMonitoring) "Сервис проверяет доступные публикации." else "Запусти мониторинг, когда подключения настроены.",
+                        if (isMonitoring) {
+                            "Сервис проверяет доступные публикации."
+                        } else {
+                            "Запусти мониторинг, когда подключения настроены."
+                        },
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(Modifier.height(14.dp))
                     if (isMonitoring) {
-                        OutlinedButton(onClick = onStop, modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = onStop,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Text("Остановить мониторинг")
                         }
                     } else {
-                        Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = onStart,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Text("Запустить мониторинг")
                         }
                     }
@@ -178,15 +214,30 @@ private fun HomeDashboard(
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                MetricCard("Подключения", connectedServices.toString(), Modifier.weight(1f))
-                MetricCard("Сообщества", communityCount.toString(), Modifier.weight(1f))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                MetricCard(
+                    "Подключения",
+                    connectedServices.coerceAtLeast(0).toString(),
+                    Modifier.weight(1f)
+                )
+                MetricCard(
+                    "Сообщества",
+                    communityCount.coerceAtLeast(0).toString(),
+                    Modifier.weight(1f)
+                )
             }
         }
         item {
-            Text("Последние события", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                "Последние события",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
         }
-        if (recentEvents.isEmpty()) {
+        if (visibleEvents.isEmpty()) {
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Text(
@@ -197,9 +248,16 @@ private fun HomeDashboard(
                 }
             }
         } else {
-            items(recentEvents.take(8)) { event ->
+            itemsIndexed(
+                items = visibleEvents,
+                key = { index, event -> "$index:$event" }
+            ) { _, event ->
                 Card(modifier = Modifier.fillMaxWidth()) {
-                    Text(event, modifier = Modifier.padding(14.dp), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        event,
+                        modifier = Modifier.padding(14.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
         }
@@ -215,11 +273,23 @@ private fun HomeDashboard(
 }
 
 @Composable
-private fun MetricCard(title: String, value: String, modifier: Modifier = Modifier) {
+private fun MetricCard(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
     Card(modifier = modifier) {
         Column(Modifier.padding(16.dp)) {
-            Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                value,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                title,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -227,11 +297,21 @@ private fun MetricCard(title: String, value: String, modifier: Modifier = Modifi
 @Composable
 private fun PlaceholderPage(title: String, subtitle: String) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            title,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            subtitle,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Text(
             "Раздел будет подключён к функциям приложения на следующем этапе.",
             style = MaterialTheme.typography.bodySmall,
