@@ -306,10 +306,16 @@ class MonitorService : Service() {
         }
     }
 
-    private fun safeMessage(error: Exception): String =
-        (error.message ?: error.javaClass.simpleName)
+    private fun safeMessage(error: Exception): String {
+        var message = (error.message ?: error.javaClass.simpleName)
             .replace(Regex("[\\r\\n]+"), " ")
-            .take(240)
+        message = message
+            .replace(Regex("(?i)bot\\d+:[A-Za-z0-9_-]{20,}"), "[СКРЫТЫЙ TELEGRAM TOKEN]")
+            .replace(Regex("(?i)Bearer\\s+[^\\s,;]+"), "Bearer [СКРЫТЫЙ КЛЮЧ]")
+            .replace(Regex("(?i)access_token=[^&\\s]+"), "access_token=[СКРЫТ]")
+            .replace(Regex("(?i)sk-[A-Za-z0-9_-]{16,}"), "[СКРЫТЫЙ API KEY]")
+        return message.take(240)
+    }
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
