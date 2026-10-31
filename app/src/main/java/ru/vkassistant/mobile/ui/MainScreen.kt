@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -41,22 +42,22 @@ private enum class AssistantTab(val label: String, val symbol: String) {
 /**
  * Material 3 UI scaffold for VK Assistant 3.3.
  *
- * This screen is intentionally UI-only until the secure 3.1 project is
- * integrated. Connect callbacks to the existing service and encrypted
- * preferences before shipping.
+ * This is a presentation layer. The caller must provide real monitoring
+ * callbacks and state from the app's service/preferences.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssistantMainScreen(
-    isMonitoring: Boolean = false,
-    connectedServices: Int = 0,
-    communityCount: Int = 0,
-    recentEvents: List<String> = emptyList(),
-    onStartMonitoring: () -> Unit = {},
-    onStopMonitoring: () -> Unit = {},
-    onOpenTab: (String) -> Unit = {}
+    isMonitoring: Boolean,
+    connectedServices: Int,
+    communityCount: Int,
+    recentEvents: List<String>,
+    onStartMonitoring: () -> Unit,
+    onStopMonitoring: () -> Unit,
+    onOpenTab: (String) -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = AssistantTab.entries
+    val tabs = AssistantTab.values()
 
     Scaffold(
         topBar = {
@@ -178,8 +179,8 @@ private fun HomeDashboard(
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                MetricCard("Подключения", "$connectedServices", Modifier.weight(1f))
-                MetricCard("Сообщества", "$communityCount", Modifier.weight(1f))
+                MetricCard("Подключения", connectedServices.toString(), Modifier.weight(1f))
+                MetricCard("Сообщества", communityCount.toString(), Modifier.weight(1f))
             }
         }
         item {
