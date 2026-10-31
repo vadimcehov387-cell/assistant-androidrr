@@ -62,6 +62,7 @@ fun AssistantMainScreen(
     history: List<String>,
     settings: Map<String, String>,
     onSaveSettings: (Map<String, String>) -> Unit,
+    onVerifyVkToken: (String) -> Unit,
     onAddCommunity: (String) -> Unit,
     onRemoveCommunity: (Community) -> Unit,
     onToggleAutoPublish: (Community, Boolean) -> Unit,
@@ -116,7 +117,7 @@ fun AssistantMainScreen(
                     style = settings["style"].orEmpty().ifBlank { "friendly" }
                 )
                 AssistantTab.HISTORY -> HistoryPage(history)
-                AssistantTab.SETTINGS -> SettingsPage(settings, onSaveSettings)
+                AssistantTab.SETTINGS -> SettingsPage(settings, onSaveSettings, onVerifyVkToken)
             }
         }
     }
@@ -331,7 +332,8 @@ private fun HistoryPage(history: List<String>) {
 @Composable
 private fun SettingsPage(
     current: Map<String, String>,
-    onSave: (Map<String, String>) -> Unit
+    onSave: (Map<String, String>) -> Unit,
+    onVerifyVkToken: (String) -> Unit
 ) {
     var vkKey by rememberSaveable(current["vk_key"]) { mutableStateOf(current["vk_key"].orEmpty()) }
     var tgToken by rememberSaveable(current["tg_token"]) { mutableStateOf(current["tg_token"].orEmpty()) }
@@ -351,7 +353,22 @@ private fun SettingsPage(
             Text("Ключи хранятся в зашифрованном локальном хранилище.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        item { SettingField("Токен VK", vkKey, { vkKey = it }, secret = true) }
+        item {
+            SettingField("Токен VK", vkKey, { vkKey = it }, secret = true)
+            Text("Вставь токен VK. Пароль от страницы приложению не нужен.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (current["vk_profile"].orEmpty().isNotBlank()) {
+                Text("Подключённый аккаунт: ${current["vk_profile"]}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary)
+            }
+            OutlinedButton(
+                onClick = { onVerifyVkToken(vkKey.trim()) },
+                enabled = vkKey.isNotBlank(),
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Проверить токен и аккаунт") }
+        }
         item { SettingField("Токен Telegram", tgToken, { tgToken = it }, secret = true) }
         item { SettingField("Telegram Chat ID", tgChat, { tgChat = it }) }
         item { SettingField("OpenAI API-ключ", aiKey, { aiKey = it }, secret = true) }
