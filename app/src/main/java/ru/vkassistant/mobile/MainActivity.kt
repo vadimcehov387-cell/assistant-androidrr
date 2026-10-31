@@ -21,7 +21,7 @@ import ru.vkassistant.mobile.ui.AssistantTheme
 
 class MainActivity : ComponentActivity() {
     private val settingKeys = listOf(
-        "vk_key", "tg_token", "tg_chat", "ai_key", "ai_model",
+        "vk_key", "vk_profile", "tg_token", "tg_chat", "ai_key", "ai_model",
         "style", "filters", "quiet_start", "quiet_end"
     )
 
@@ -62,6 +62,23 @@ class MainActivity : ComponentActivity() {
                     recentEvents = events,
                     history = history,
                     settings = settings,
+                    onVerifyVkToken = { token ->
+                        Thread({
+                            try {
+                                val profile = Api.verifyVkToken(token)
+                                Prefs.put(this@MainActivity, "vk_key", token)
+                                Prefs.put(this@MainActivity, "vk_profile", profile)
+                                runOnUiThread {
+                                    Toast.makeText(this@MainActivity, "VK подключён: $profile", Toast.LENGTH_LONG).show()
+                                    refreshKey++
+                                }
+                            } catch (e: Exception) {
+                                runOnUiThread {
+                                    Toast.makeText(this@MainActivity, e.message ?: "Не удалось проверить токен", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }, "VerifyVkToken").start()
+                    },
                     onSaveSettings = { values ->
                         values.forEach { (key, value) -> Prefs.put(this@MainActivity, key, value) }
                         Toast.makeText(this@MainActivity, "Настройки сохранены", Toast.LENGTH_SHORT).show()
