@@ -69,7 +69,8 @@ object Prefs {
                 }
             }
         }
-        editor.putBoolean(MIGRATION_FLAG, true).commit()
+        editor.putBoolean(MIGRATION_FLAG, true)
+        check(editor.commit()) { "Не удалось перенести настройки в зашифрованное хранилище" }
         // Clear legacy plaintext only after encrypted data was committed.
         legacy.edit().clear().commit()
     }
@@ -133,13 +134,13 @@ object Prefs {
     }
 
     fun addHistory(context: Context, line: String) {
-        val safeLine = line.replace("\\n", " ").replace("\\r", " ").take(500)
+        val safeLine = line.replace("\n", " ").replace("\r", " ").take(500)
         if (safeLine.isBlank()) return
         synchronized(lock) {
             val previous = get(context, "history", "")
-            val entries = (listOf(safeLine) + previous.split("\\n").filter { it.isNotBlank() })
+            val entries = (listOf(safeLine) + previous.split("\n").filter { it.isNotBlank() })
                 .take(MAX_HISTORY_ITEMS)
-            put(context, "history", entries.joinToString("\\n"))
+            put(context, "history", entries.joinToString("\n"))
         }
     }
 }
