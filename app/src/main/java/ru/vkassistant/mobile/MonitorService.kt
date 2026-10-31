@@ -203,10 +203,11 @@ class MonitorService : Service() {
                         "PUBLISHED | ${community.title} | $link | comment=$commentId"
                     )
                 } catch (error: Exception) {
-                    publishStatus = "VK не принял комментарий: ${safeMessage(error)}. Черновик отправлен."
+                    publishStatus = "VK отклонил публикацию: ${safeMessage(error)}. Автопубликация для этого сообщества отключена; проверь причину вручную."
+                    disableAutoPublishForCommunity(community)
                     Prefs.addHistory(
                         this,
-                        "PUBLISH_ERROR | ${community.title} | ${safeMessage(error)}"
+                        "PUBLISH_ERROR_AUTO_DISABLED | ${community.title} | ${safeMessage(error)}"
                     )
                 }
             } else {
@@ -254,7 +255,16 @@ class MonitorService : Service() {
         Prefs.saveCommunities(this, communities)
     }
 
-    // Limit: at most one auto-comment per minute and ten per clock hour.
+    private fun disableAutoPublishForCommunity(community: Community) {
+        val communities = Prefs.communities(this)
+        val index = communities.indexOfFirst { it.ownerId == community.ownerId }
+        if (index < 0) return
+        communities[index] = communities[index].copy(autoPublish = false)
+        Prefs.saveCommunities(this, communities)
+        updateNotification("Автопубликация отключена для ${community.title}: ошибка VK")
+    }
+
+    // Conservative safety cap: no more than one automatic comment per 15 minutes and three per hour.
     private fun reserveAutoPublishSlot(): Boolean {
         val now = System.currentTimeMillis()
         val last = Prefs.get(this, "auto_last_ms", "0").toLongOrNull() ?: 0L
@@ -366,9 +376,9 @@ class MonitorService : Service() {
 
     companion object {
         const val ACTION_STOP = "ru.vkassistant.mobile.STOP"
-        private const val POLL_INTERVAL_MS = 30_000L
-        private const val MIN_AUTO_PUBLISH_INTERVAL_MS = 60_000L
+        private const val POLL_INTERVAL_MS = 60_000L
+        private const val MIN_AUTO_PUBLISH_INTERVAL_MS = 15 * 60_000L
         private const val MILLIS_PER_HOUR = 3_600_000L
-        private const val MAX_AUTO_PUBLISH_PER_HOUR = 10
+        private const val MAX_AUTO_PUBLISH_PER_HOUR = 3
     }
 }
