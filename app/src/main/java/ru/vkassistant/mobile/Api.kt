@@ -89,7 +89,7 @@ object Api {
             vkKey
         )
         val groups = response.optJSONArray("response")
-            ?: response.optJSONObject("response")?.optJSONArray("groups)
+            ?: response.optJSONObject("response")?.optJSONArray("groups")
             ?: throw IllegalStateException("VK вернул неожиданный формат данных о сообществе")
         if (groups.length() == 0) throw IllegalStateException("Сообщество не найдено")
 
