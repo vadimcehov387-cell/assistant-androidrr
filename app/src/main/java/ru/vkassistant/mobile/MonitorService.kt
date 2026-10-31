@@ -101,8 +101,16 @@ class MonitorService : Service() {
                     "ERROR | ${community.title} | ${safeMessage(error)}"
                 )
             }
+            // Pace requests across selected communities to avoid bursts against VK API.
+            if (isActive(runId)) {
+                try {
+                    Thread.sleep(400L)
+                } catch (_: InterruptedException) {
+                    if (!isActive(runId)) break
+                }
+            }
         }
-        updateNotification("Проверено сообществ: ${communities.size} · интервал 30 сек")
+        updateNotification("Проверено сообществ: ${communities.size} · быстрый режим: 15 сек")
     }
 
     private fun processCommunity(
@@ -376,7 +384,7 @@ class MonitorService : Service() {
 
     companion object {
         const val ACTION_STOP = "ru.vkassistant.mobile.STOP"
-        private const val POLL_INTERVAL_MS = 60_000L
+        private const val POLL_INTERVAL_MS = 15_000L
         private const val MIN_AUTO_PUBLISH_INTERVAL_MS = 15 * 60_000L
         private const val MILLIS_PER_HOUR = 3_600_000L
         private const val MAX_AUTO_PUBLISH_PER_HOUR = 3
