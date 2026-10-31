@@ -27,6 +27,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -75,7 +77,12 @@ fun AssistantMainScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = {
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                ),
+                title = {
                 Column {
                     Text("VK Assistant", fontWeight = FontWeight.Bold)
                     Text("УМНЫЙ МОНИТОРИНГ СООБЩЕСТВ", style = MaterialTheme.typography.labelSmall,
@@ -140,7 +147,7 @@ private fun HomeDashboard(
             Column(Modifier.padding(top = 18.dp)) {
                 Text("Панель управления", style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold)
-                Text("Всё важное о работе помощника — в одном месте",
+                Text("Контроль мониторинга и активности в одном месте",
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -150,7 +157,19 @@ private fun HomeDashboard(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )) {
                 Column(Modifier.padding(22.dp)) {
-                    Text("СТАТУС СИСТЕМЫ", style = MaterialTheme.typography.labelMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Surface(shape = RoundedCornerShape(50),
+                            color = if (isMonitoring) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.16f)
+                            else MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)) {
+                            Text(if (isMonitoring) "● В РАБОТЕ" else "● ОЖИДАНИЕ",
+                                Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isMonitoring) MaterialTheme.colorScheme.tertiary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
                     Text(if (isMonitoring) "Мониторинг активен" else "Мониторинг остановлен",
                         style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
                     Text(if (isMonitoring) "Помощник отслеживает новые публикации."
@@ -170,8 +189,15 @@ private fun HomeDashboard(
                 MetricCard("Сообщества", communityCount.toString(), Modifier.weight(1f))
             }
         }
-        item { Text("Последние события", style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold) }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Последние события", style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold)
+                Text("ЖУРНАЛ", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary)
+            }
+            HorizontalDivider(Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+        }
         if (recentEvents.isEmpty()) item {
             Card(Modifier.fillMaxWidth()) { Text("Здесь появятся события мониторинга.",
                 Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
