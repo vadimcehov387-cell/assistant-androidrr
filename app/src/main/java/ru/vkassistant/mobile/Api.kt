@@ -81,6 +81,20 @@ object Api {
         }
     }
 
+    fun verifyVkToken(vkToken: String): String {
+        require(vkToken.isNotBlank()) { "Вставь токен VK" }
+        val response = vkGet("users.get", emptyMap(), vkToken)
+        val users = response.optJSONArray("response")
+            ?: throw IllegalStateException("VK не вернул данные аккаунта")
+        if (users.length() == 0) throw IllegalStateException("Аккаунт VK не найден")
+        val user = users.getJSONObject(0)
+        val id = user.optLong("id")
+        if (id <= 0L) throw IllegalStateException("VK вернул некорректный ID аккаунта")
+        val name = listOf(user.optString("first_name"), user.optString("last_name"))
+            .filter { it.isNotBlank() }.joinToString(" ")
+        return "$name · ID $id"
+    }
+
     fun resolveCommunity(raw: String, vkKey: String): Community {
         val input = raw.trim()
         require(input.isNotBlank()) { "Вставь ссылку на сообщество VK" }
