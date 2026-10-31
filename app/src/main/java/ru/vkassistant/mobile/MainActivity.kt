@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import ru.vkassistant.mobile.ui.AssistantMainScreen
+import ru.vkassistant.mobile.ui.AssistantTheme
 
 class MainActivity : ComponentActivity() {
     private val settingKeys = listOf(
