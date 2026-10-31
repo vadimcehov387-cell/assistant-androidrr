@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -76,13 +77,16 @@ fun AssistantMainScreen(
             TopAppBar(title = {
                 Column {
                     Text("VK Assistant", fontWeight = FontWeight.Bold)
-                    Text("Версия 3.3", style = MaterialTheme.typography.labelSmall,
+                    Text("УМНЫЙ МОНИТОРИНГ СООБЩЕСТВ", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             })
         },
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp
+            ) {
                 tabs.forEachIndexed { index, tab ->
                     NavigationBarItem(
                         selected = safeTabIndex == index,
@@ -133,23 +137,24 @@ private fun HomeDashboard(
     ) {
         item {
             Column(Modifier.padding(top = 18.dp)) {
-                Text("Панель управления", style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold)
-                Text("Мониторинг публикаций и подготовка ответов",
+                Text("Панель управления", style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold)
+                Text("Всё важное о работе помощника — в одном месте",
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         item {
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )) {
-                Column(Modifier.padding(18.dp)) {
-                    Text("СОСТОЯНИЕ МОНИТОРИНГА", style = MaterialTheme.typography.labelMedium)
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )) {
+                Column(Modifier.padding(22.dp)) {
+                    Text("СТАТУС СИСТЕМЫ", style = MaterialTheme.typography.labelMedium)
                     Text(if (isMonitoring) "Мониторинг активен" else "Мониторинг остановлен",
-                        style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text(if (isMonitoring) "Сервис проверяет публикации."
-                        else "Запусти мониторинг после настройки подключений.")
-                    Spacer(Modifier.height(12.dp))
+                        style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                    Text(if (isMonitoring) "Помощник отслеживает новые публикации."
+                        else "Настрой подключения и запусти мониторинг.")
+                    Spacer(Modifier.height(16.dp))
                     if (isMonitoring) OutlinedButton(onClick = onStop, Modifier.fillMaxWidth()) {
                         Text("Остановить мониторинг")
                     } else Button(onClick = onStart, Modifier.fillMaxWidth()) {
@@ -421,11 +426,12 @@ private fun EventCard(text: String) {
 
 @Composable
 private fun MetricCard(title: String, value: String, modifier: Modifier = Modifier) {
-    Card(modifier) {
-        Column(Modifier.padding(16.dp)) {
-            Text(value, style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold)
-            Text(title, style = MaterialTheme.typography.bodySmall,
+    Card(modifier, shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(value, style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+            Text(title, style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
