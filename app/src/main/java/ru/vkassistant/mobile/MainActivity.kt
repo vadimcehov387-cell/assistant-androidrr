@@ -12,14 +12,18 @@ import androidx.core.content.ContextCompat
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import ru.vkassistant.mobile.ui.AssistantMainScreen
-import ru.vkassistant.mobile.ui.AssistantTheme
 
 class MainActivity : ComponentActivity() {
+    private val settingKeys = listOf(
+        "vk_key", "tg_token", "tg_chat", "ai_key", "ai_model",
+        "style", "filters", "quiet_start", "quiet_end"
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestNotificationPermissionIfNeeded()
@@ -27,46 +31,86 @@ class MainActivity : ComponentActivity() {
         setContent {
             AssistantTheme {
                 var refreshKey by remember { mutableIntStateOf(0) }
-                val events = remember { mutableStateListOf<String>() }
+                var lastError by remember { mutableStateOf("") }
 
                 LaunchedEffect(Unit) {
                     while (true) {
                         refreshKey++
-                        events.clear()
-                        events.addAll(
-                            Prefs.get(this@MainActivity, "history", "")
-                                .lineSequence()
-                                .filter { it.isNotBlank() }
-                                .take(8)
-                                .toList()
-                        )
                         delay(2_000)
                     }
                 }
 
-                val communities = Prefs.communities(this@MainActivity)
-                // refreshKey intentionally participates in recomposition so the
-                // dashboard reflects service status and preference changes.
-                refreshKey
+                val settings = remember(refreshKey) {
+                    settingKeys.associateWith { Prefs.get(this@MainActivity, it) }
+                }
+                val communities = remember(refreshKey) { Prefs.communities(this@MainActivity).toList() }
+                val history = remember(refreshKey) {
+                    Prefs.get(this@MainActivity, "history", "")
+                        .lineSequence().filter { it.isNotBlank() }.take(60).toList()
+                }
+                val events = history.take(8)
+
+                lastError
                 AssistantMainScreen(
                     isMonitoring = Prefs.isRunning(this@MainActivity),
                     connectedServices = listOf(
-                        Prefs.get(this@MainActivity, "vk_key"),
-                        Prefs.get(this@MainActivity, "tg_token")
-                    ).count { it.isNotBlank() },
+                        settings["vk_key"], settings["tg_token"]
+                    ).count { !it.isNullOrBlank() },
                     communityCount = communities.size,
-                    recentEvents = events.toList(),
-                    onStartMonitoring = { startMonitoring() },
-                    onStopMonitoring = { stopMonitoring() },
-                    onOpenTab = { route ->
-                        if (route != "home") {
-                            Toast.makeText(
-                                this@MainActivity,
-                                "Раздел «$route» пока находится в разработке",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                    communities = communities,
+                    recentEvents = events,
+                    history = history,
+                    settings = settings,
+                    onSaveSettings = { values ->
+                        values.forEach { (key, value) -> Prefs.put(this@MainActivity, key, value) }
+                        Toast.makeText(this@MainActivity, "Настройки сохранены", Toast.LENGTH_SHORT).show()
+                        refreshKey++
+                    },
+                    onAddCommunity = { link ->
+                        Thread({
+                            try {
+                                val token = Prefs.get(this@MainActivity, "vk_key")
+                                val community = Api.resolveCommunity(link, token)
+                                val current = Prefs.communities(this@MainActivity)
+                                if (current.any { it.ownerId == community.ownerId }) {
+                                    throw IllegalArgumentException("Это сообщество уже добавлено")
+                                }
+                                Prefs.saveCommunities(this@MainActivity, current + community)
+                                runOnUiThread {
+                                    Toast.makeText(this@MainActivity, "Сообщество добавлено", Toast.LENGTH_SHORT).show()
+                                    refreshKey++
+                                }
+                            } catch (e: Exception) {
+                                runOnUiThread {
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        e.message ?: "Не удалось добавить сообщество",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+                        }, "AddVkCommunity").start()
+                    },
+                    onRemoveCommunity = { community ->
+                        Prefs.saveCommunities(
+                            this@MainActivity,
+                            Prefs.communities(this@MainActivity).filterNot { it.ownerId == community.ownerId }
+                        )
+                        refreshKey++
+                    },
+                    onToggleAutoPublish = { community, enabled ->
+                        val updated = Prefs.communities(this@MainActivity).map {
+                            if (it.ownerId == community.ownerId) it.copy(autoPublish = enabled) else it
                         }
-                    }
+                        Prefs.saveCommunities(this@MainActivity, updated)
+                        Prefs.addHistory(
+                            this@MainActivity,
+                            "SETTINGS | ${community.title} | автопубликация ${if (enabled) "включена" else "выключена"}"
+                        )
+                        refreshKey++
+                    },
+                    onStartMonitoring = { startMonitoring() },
+                    onStopMonitoring = { stopMonitoring() }
                 )
             }
         }
@@ -77,34 +121,27 @@ class MainActivity : ComponentActivity() {
             Prefs.get(this, "tg_token").isBlank() ||
             Prefs.get(this, "tg_chat").isBlank()
         ) {
-            Toast.makeText(
-                this,
-                "Сначала настрой VK и Telegram. Экран настроек ещё не подключён.",
-                Toast.LENGTH_LONG
-            ).show()
+            Toast.makeText(this, "Сначала заполни настройки VK и Telegram.", Toast.LENGTH_LONG).show()
             return
         }
         if (Prefs.communities(this).isEmpty()) {
-            Toast.makeText(this, "Добавь хотя бы одно сообщество VK.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Сначала добавь сообщество VK.", Toast.LENGTH_LONG).show()
             return
         }
-        val serviceIntent = Intent(this, MonitorService::class.java)
-        ContextCompat.startForegroundService(this, serviceIntent)
+        ContextCompat.startForegroundService(this, Intent(this, MonitorService::class.java))
     }
 
     private fun stopMonitoring() {
-        val serviceIntent = Intent(this, MonitorService::class.java).apply {
+        val intent = Intent(this, MonitorService::class.java).apply {
             action = MonitorService.ACTION_STOP
         }
-        startService(serviceIntent)
+        startService(intent)
     }
 
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 12)
         }
