@@ -12,7 +12,6 @@ import androidx.core.content.ContextCompat
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
@@ -32,12 +31,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             AssistantTheme {
                 var refreshKey by remember { mutableIntStateOf(0) }
-                var lastError by remember { mutableStateOf("") }
-
                 LaunchedEffect(Unit) {
                     while (true) {
                         refreshKey++
-                        delay(2_000)
+                        delay(10_000)
                     }
                 }
 
@@ -51,7 +48,6 @@ class MainActivity : ComponentActivity() {
                 }
                 val events = history.take(8)
 
-                lastError
                 AssistantMainScreen(
                     isMonitoring = Prefs.isRunning(this@MainActivity),
                     connectedServices = listOf(
