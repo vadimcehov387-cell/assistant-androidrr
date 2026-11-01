@@ -1,6 +1,5 @@
 package ru.vkassistant.mobile.ui
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -170,7 +169,7 @@ private fun HomeDashboard(
             }
         }
         item {
-            Card(Modifier.fillMaxWidth().animateContentSize(), shape = RoundedCornerShape(26.dp),
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )) {
@@ -488,7 +487,7 @@ private fun EventCard(text: String) {
 
 @Composable
 private fun MetricCard(title: String, value: String, modifier: Modifier = Modifier) {
-    Card(modifier.animateContentSize(), shape = RoundedCornerShape(22.dp),
+    Card(modifier, shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(value, style = MaterialTheme.typography.headlineLarge,
